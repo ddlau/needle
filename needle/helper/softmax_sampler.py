@@ -11,7 +11,7 @@ class SoftmaxSampler(object):
         # noise = self.noise.next() * FLAGS.noise_weight
         logits = logits[0][0]
         if noise is not None:
-            logits = logits + noise.next()
+            logits = logits + next(noise)#noise.next()
         actions = softmax(logits)
         # actions = (actions + 0.01) / (self.output_dim * 0.01 + 1)
         logging.debug("logits = %s" % (logits - max(logits),))

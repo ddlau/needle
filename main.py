@@ -18,8 +18,16 @@ gflags.DEFINE_string("monitor", "", "path to save recordings")
 gflags.DEFINE_integer("iterations", 100000, "# iterations to run")
 gflags.DEFINE_float("learning_rate", 1e-3, "learning rate")
 gflags.DEFINE_boolean("verbose", False, "to show all log")
+
 FLAGS = gflags.FLAGS
 
+
+
+FLAGS.mode='train'
+FLAGS.env = 'CartPole-v0'
+FLAGS.agent = 'TRPO'
+#FLAGS.verbose = True
+#FLAGS.iterations = 50
 
 def main():
     np.set_printoptions(linewidth=1000)
@@ -51,9 +59,10 @@ def main():
     merged = tf.summary.merge_all()
     if FLAGS.log_dir != "" and tf.gfile.Exists(FLAGS.log_dir):
         tf.gfile.DeleteRecursively(FLAGS.log_dir)
-    summary_writer = tf.train.SummaryWriter(FLAGS.log_dir)
+    summary_writer = tf.summary.FileWriter(FLAGS.log_dir) #tf.train.SummaryWriter(FLAGS.log_dir)
 
     for iterations in range(FLAGS.iterations):
+        print( 'iterations', iterations)
         if not FLAGS.verbose and iterations % FLAGS.batch_size == 0:
             logging.root.setLevel(logging.DEBUG)
         agent.reset()
@@ -66,7 +75,7 @@ def main():
         total_rewards = 0
         steps = 0
 
-        while not done and steps < env.spec.timestep_limit:
+        while not done and steps < env.spec.max_episode_steps:# .timestep_limit:
             steps += 1
 
             model_action = agent.action(model_state)
@@ -76,7 +85,7 @@ def main():
             #     logging.warning(action[0])
             new_state, reward, done, info = env.step(action)
             # logging.debug("state = %s, action = %s, reward = %s" % (model_state, action, reward))
-            if steps == env.spec.timestep_limit:
+            if steps == env.spec.max_episode_steps:#.timestep_limit:
                 done = False
 
             model_new_state = adaptor.state(new_state)
@@ -84,8 +93,8 @@ def main():
             model_state = model_new_state
 
             total_rewards += reward
-            if iterations % 10 == 0 and steps % 1 == 0 and FLAGS.mode == "infer":
-                time.sleep(1)
+            if iterations % 10 == 0 and steps % 1 == 0:# and FLAGS.mode == "infer":
+                #time.sleep(1)
                 env.render()
                 # logging.warning("step: #%d, action = %.3f, reward = %.3f, iteration = %d" % (steps, action[0], reward, iterations))
             # if episode == 0:
@@ -110,7 +119,65 @@ def main():
     if FLAGS.monitor != "":
         env.monitor.close()
 
+
+
+
+
+
+
+
+
+
+
+def tst():
+    def _init_openmpi():
+        """Pre-load libmpi.dll and register OpenMPI distribution."""
+        import os
+        import ctypes
+        if os.name != 'nt' or 'OPENMPI_HOME' in os.environ:
+            return
+        try:
+            openmpi_home = os.path.abspath(os.path.dirname(__file__))
+            openmpi_bin = os.path.join(openmpi_home, 'bin')
+            os.environ['OPENMPI_HOME'] = openmpi_home
+            os.environ['PATH'] = ';'.join((openmpi_bin, os.environ['PATH']))
+            ctypes.cdll.LoadLibrary(os.path.join(openmpi_bin, 'libmpi.dll'))
+        except Exception:
+            pass
+
+    _init_openmpi()
+
+    import gym
+
+    from stable_baselines.common.policies import MlpPolicy
+    from stable_baselines import TRPO
+
+    env = gym.make('CartPole-v1')
+
+    model = TRPO(MlpPolicy, env, verbose=1)
+    model.learn(total_timesteps=25000)
+    model.save("trpo_cartpole")
+
+    del model # remove to demonstrate saving and loading
+
+    model = TRPO.load("trpo_cartpole")
+
+    obs = env.reset()
+    while True:
+        action, _states = model.predict(obs)
+        obs, rewards, dones, info = env.step(action)
+        env.render()
+
+
 if __name__ == "__main__":
+
+
+    tst()
+    exit()
+
+
+
+
     FLAGS(sys.argv)
     with tf.Session().as_default():
         main()

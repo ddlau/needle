@@ -92,7 +92,7 @@ def main():
             v1 = segment_tree.sample(r)
             for w, v in x:
                 if w >= s:
-                    print v1 == v
+                    print( v1 == v)
                     break
                 else:
                     s -= w

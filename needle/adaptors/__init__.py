@@ -1,4 +1,4 @@
-from utils import register_adaptor, find_adaptor
+from .utils import register_adaptor, find_adaptor
 
 import needle.adaptors.CartPole
 import needle.adaptors.Copy

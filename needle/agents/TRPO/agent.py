@@ -79,20 +79,36 @@ class Agent(SoftmaxSampler, Batcher, BasicAgent):
             for j in range(lengths[i]):
                 gradients.append(self.critic.gradient({self.critic.op_inputs: states[i:i + 1, j:j + 1]}))
                 deltas.append(values[i, j] - total_rewards[i, j])
-        jacobian = np.vstack(gradients)
-        deltas = np.array(deltas)
-        rank = len(deltas)
+        jacobian = np.vstack(gradients) # (batchSize,thetaSize)
+        deltas = np.array(deltas) # (batchSize,)
+        rank = len(deltas) # batchSize
 
-        logging.info("values = %s, rewards = %s" % (values[0, :3], total_rewards[0, :3]))
+        logging.info("values = %s, rewards = %s max/min-total-rewards = %s %s" % (values[0, :3], total_rewards[0, :3], np.max(total_rewards), np.min(total_rewards)))
         # logging.info("variance: %s, deltas = %s" % (variance, deltas))
         # logging.info("rewards = %s" % (total_rewards,))
         variance = np.var(deltas)
 
+
+        def fAx(direction):
+            a = jacobian.dot(direction)
+            b = jacobian.T.dot(a)
+            c = b / variance / rank
+            return c
+
+        theB = jacobian.T.dot(deltas) / rank
+
+
+
+
         natural_gradient, dot_prod = conjugate_gradient(
-            lambda direction: jacobian.T.dot(jacobian.dot(direction)) / variance / rank,
-            jacobian.T.dot(deltas) / rank,
+            fAx, theB
+            #lambda direction: jacobian.T.dot(jacobian.dot(direction)) / variance / rank,
+            #jacobian.T.dot(deltas) / rank,
         )
-        natural_gradient *= np.sqrt(2 * FLAGS.critic_eps / (dot_prod + 1e-8))
+
+        beta = np.sqrt(2 * FLAGS.critic_eps / (dot_prod + 1e-8))
+        print( 'the beta', beta)
+        natural_gradient *= beta
         self.critic.apply_grad(natural_gradient)
 
     def train_batch(self, lengths, mask, states, choices, rewards, new_states):

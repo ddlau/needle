@@ -22,7 +22,7 @@ class VariableList(object):
         for var in self.variables:
             flattened.append(tf.reshape(var, [-1]))
             logging.warning("var = %s, shape = %s" % (var.name, var.get_shape()))
-        return tf.concat(0, flattened)
+        return tf.concat( flattened, 0) # ddlau
 
     def get_variables(self):
         return tf.get_default_session().run(
@@ -34,7 +34,9 @@ class VariableList(object):
         for grad in tf.gradients(op_loss, self.variables):
             flattened.append(tf.reshape(grad, [-1]))
         # logging.debug(flattened)
-        return tf.concat(0, flattened)
+
+        return tf.concat(flattened,0)
+        #return tf.concat(0, flattened)
 
     def get_flat_gradient(self, grad, feed_dict):
         return tf.get_default_session().run(

@@ -53,7 +53,7 @@ class ReplayBuffer:
         return ReplayBuffer.finalize(samplings)
 
 def main():
-    print ReplayBuffer.reshape([np.array([[1], [2]]), np.array([[2, 2], [3, 3], [4, 5]])])
+    print (ReplayBuffer.reshape([np.array([[1], [2]]), np.array([[2, 2], [3, 3], [4, 5]])]))
 
 if __name__ == "__main__":
     main()

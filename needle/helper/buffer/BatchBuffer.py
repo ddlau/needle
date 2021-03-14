@@ -19,7 +19,7 @@ class BatchBuffer:
     def reshape(values):
         shape = np.max([v.shape for v in values], axis=0)
         zeros = shape * 0
-        values = [np.pad(v, zip(zeros, shape - v.shape), 'constant') for v in values]
+        values = [np.pad(v, list(zip(zeros, shape - v.shape) ), 'constant') for v in values]
         return np.concatenate(values)
 
     @staticmethod
