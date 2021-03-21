@@ -149,12 +149,12 @@ def tst():
 
     import gym
 
-    from stable_baselines.common.policies import MlpPolicy
+    from stable_baselines.common.policies import MlpPolicy, CnnPolicy
     from stable_baselines import TRPO
 
-    env = gym.make('CartPole-v1')
+    env = gym.make('BreakoutNoFrameskip-v4')#'CartPole-v1')
 
-    model = TRPO(MlpPolicy, env, verbose=1)
+    model = TRPO(CnnPolicy, env, timesteps_per_batch=1024, verbose=1)
     model.learn(total_timesteps=25000)
     model.save("trpo_cartpole")
 
