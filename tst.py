@@ -1,3 +1,4 @@
+
 import os
 import redis
 import pickle
@@ -11,6 +12,9 @@ import gym
 from stable_baselines.common.env_checker import check_env
 from stable_baselines.common.runners import traj_segment_generator
 from stable_baselines.common.policies import MlpPolicy
+
+
+
 
 
 class Environment( gym.Env ):
@@ -67,16 +71,22 @@ class Environment( gym.Env ):
 
 
 def tst():
-	print( np.concatenate( (np.random.randn( 3, 4 ).flatten(), (123, 321), np.random.randn( 4, 3 ).flatten()) ) )
-	exit()
 
-	# env = gym.make( 'CartPole-v1')
+	# print( redis.StrictRedis().xread( { 'observations' : "9913881416585-0" }, 1))
+	# exit()
+	#
+	# print( np.concatenate( (np.random.randn( 3, 4 ).flatten(), (123, 321), np.random.randn( 4, 3 ).flatten()) ) )
+	# exit()
+
+	env = gym.make( 'CartPole-v1')
 	# print( env.observation_space )
 	# print( env.action_space )
 
-	env = Environment()
+	#env = Environment()
 
-	check_env( env )
+	#check_env( env )
+
+
 
 	for x in traj_segment_generator( MlpPolicy, env, 1024 ):
 		print( x )
