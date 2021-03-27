@@ -30,7 +30,7 @@ from stable_baselines.common import explained_variance, zipsame, dataset, fmt_ro
 	SetVerbosity, TensorboardWriter
 from stable_baselines import logger
 from stable_baselines.common.mpi_adam import MpiAdam
-from stable_baselines.common.cg import conjugate_gradient
+#from stable_baselines.common.cg import conjugate_gradient
 from stable_baselines.common.policies import ActorCriticPolicy
 from stable_baselines.common.misc_util import flatten_lists
 # from stable_baselines.common.runners import traj_segment_generator
@@ -50,7 +50,57 @@ def discount( x, decay, check=None ):
 
 	return y
 
+def cg_via_np(
+		f, b,
+		its=10,
+		tol=1e-10,
+		verbose=None,
+		callback=None,
+		all_not_met=True,
+		exit_when_fit=True,
+		final_not_prime=True,
+):
+	n_at_prime = float( 'inf' )
+	x_at_prime = None
 
+	p = b
+	r = b
+	x = np.zeros( np.shape( b ) )
+	n = np.dot( r, r )
+
+	if verbose:
+		print( f'{"its":>4s}{"norm of r":>16s}{"norm of x":>16s}' )
+
+	i = 0
+	while its:
+		z = f( p )
+		v = n / np.dot( p, z )
+		x = x + v * p
+		r = r - v * z
+		m = np.dot( r, r )
+		u = m / n
+		p = r + u * p
+		n = m
+
+		if verbose:
+			print( f'{i:>4d}{n:>16.8f}{np.linalg.norm( x ):>16.8f}' )
+		if callback:
+			callback( x )
+
+		if n < tol:
+			if exit_when_fit:
+				break
+
+		new_prime_met = n < n_at_prime
+		if new_prime_met:
+			n_at_prime = n
+			x_at_prime = x
+
+		i += 1
+		if all_not_met or new_prime_met:
+			its -= 1
+
+	return x if final_not_prime else x_at_prime
 
 from stable_baselines.common.policies import MlpPolicy
 
@@ -237,7 +287,7 @@ def trajectories1st( environment, policy, horizon, gamma, lamda ):
 
 				deltas = np.asarray( rewards ) + gamma * m * v[ +1: ] - v[ :-1 ]
 				advantages = discount( deltas, gamma * lamda )
-				returns = advantages + values
+				returns = advantages + np.asarray(values)
 
 				lengths_of_episodes.append( len( rewards ) )
 				returns_of_episodes.append( np.sum( rewards ) )
@@ -590,6 +640,10 @@ class TRPO(ActorCriticRLModel):
 							steps = self.num_timesteps + (k + 1) * (seg["total_timestep"] / self.g_step)
 							run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 							run_metadata = tf.RunMetadata() if self.full_tensorboard_log else None
+
+
+
+
 							# run loss backprop with summary, and save the metadata (memory, compute time, ...)
 							if writer is not None:
 								summary, grad, *lossbefore = self.compute_lossandgrad(*args, tdlamret, sess=self.sess,
@@ -609,8 +663,9 @@ class TRPO(ActorCriticRLModel):
 							logger.log("Got zero gradient. not updating")
 						else:
 							with self.timed("conjugate_gradient"):
-								stepdir = conjugate_gradient(fisher_vector_product, grad, cg_iters=self.cg_iters,
-															 verbose=self.rank == 0 and self.verbose >= 1)
+								stepdir = cg_via_np(fisher_vector_product, grad, self.cg_iters, final_not_prime=False )
+								# stepdir = conjugate_gradient(fisher_vector_product, grad, cg_iters=self.cg_iters,
+								# 							 verbose=self.rank == 0 and self.verbose >= 1)
 							assert np.isfinite(stepdir).all()
 							shs = .5 * stepdir.dot(fisher_vector_product(stepdir))
 							# abs(shs) to avoid taking square root of negative values
