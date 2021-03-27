@@ -37,13 +37,24 @@ from stable_baselines.common.misc_util import flatten_lists
 from stable_baselines.trpo_mpi.utils import add_vtarg_and_adv
 
 
+from scipy.signal import lfilter
 
+def discount( x, decay, check=None ):
+	y = lfilter( [ 1 ], [ 1, -decay ], x[ ::-1 ], axis=0 )[ ::-1 ]
+
+	if check:
+		v = 0
+		for t in reversed( range( len( x ) ) ):
+			v = v * decay + x[ t ]
+			assert y[ t ] == v
+
+	return y
 
 
 
 from stable_baselines.common.policies import MlpPolicy
 
-def traj_segment_generator(policy, env, horizon, reward_giver=None, gail=False, callback=None):
+def xxtraj_segment_generator(policy, env, horizon, reward_giver=None, gail=False, callback=None):
 
 
 	# Check when using GAIL
@@ -176,6 +187,83 @@ def traj_segment_generator(policy, env, horizon, reward_giver=None, gail=False, 
 
 
 
+def trajectories1st( environment, policy, horizon, gamma, lamda ):
+	states = policy.initial_state
+
+	while True:
+		steps = 0
+		lengths_of_episodes = list()
+		returns_of_episodes = list()
+		observations_at_all = list()
+		actions_at_all = list()
+		values_at_all = list()
+		rewards_at_all = list()
+		advantages_at_all = list()
+		returns_at_all = list()
+
+		while steps < horizon:
+			observations = list()
+			actions = list()
+			values = list()
+			rewards = list()
+
+			new = environment.reset()
+			while True:
+
+				action, value, states, _ = policy.step( new[None,:] )
+				action = action[0]
+				value = value[0]
+				# print( 'action',action)
+				#action, value = policy.act( new )
+				old, new, reward, stop, done, info = new, *environment.step( action )
+				#print( f'stop={stop}, done={done}')
+
+				if stop and not observations:
+					break
+
+				steps += 1
+
+				if not stop:
+					observations.append( old )
+					actions.append( action )
+					values.append( value )
+					rewards.append( reward )
+
+				if not stop and not done:
+					continue
+
+				v = np.concatenate( (values, [ value ]) )
+				m = np.concatenate( (np.ones( len( values ) - 1 ), [ 0 if done else 1 ]) )
+
+				deltas = np.asarray( rewards ) + gamma * m * v[ +1: ] - v[ :-1 ]
+				advantages = discount( deltas, gamma * lamda )
+				returns = advantages + values
+
+				lengths_of_episodes.append( len( rewards ) )
+				returns_of_episodes.append( np.sum( rewards ) )
+				observations_at_all.append( observations )
+				actions_at_all.append( actions )
+				values_at_all.append( values )
+				rewards_at_all.append( rewards )
+				advantages_at_all.append( advantages )
+				returns_at_all.append( returns )
+				break
+
+		yield {
+			'observations': np.concatenate( observations_at_all ),
+			'rewards'     : np.concatenate( rewards_at_all ),
+			"true_rewards"     : np.concatenate( rewards_at_all),
+			"vpred"            : np.concatenate(values_at_all),
+			"actions"          : np.concatenate(actions_at_all),
+			#"nextvpred"        : vpred[ 0 ] * (1 - episode_start),
+			"ep_rets"          : returns_of_episodes,
+			"ep_lens"          : lengths_of_episodes,
+			"ep_true_rets"     : returns_of_episodes,
+			"total_timestep"   : steps,
+			'continue_training': True,
+			'adv':np.concatenate(advantages_at_all),
+			'tdlamret':np.concatenate(returns_at_all),
+		}
 
 
 
@@ -424,9 +512,10 @@ class TRPO(ActorCriticRLModel):
 			with self.sess.as_default():
 				callback.on_training_start(locals(), globals())
 
-				seg_gen = traj_segment_generator(self.policy_pi, self.env, self.timesteps_per_batch,
-												 reward_giver=self.reward_giver,
-												 gail=self.using_gail, callback=callback)
+				seg_gen = trajectories1st(self.env, self.policy_pi, self.timesteps_per_batch, self.gamma, self.lam)
+				# seg_gen = traj_segment_generator(self.policy_pi, self.env, self.timesteps_per_batch,
+				# 								 reward_giver=self.reward_giver,
+				# 								 gail=self.using_gail, callback=callback)
 
 				episodes_so_far = 0
 				timesteps_so_far = 0
@@ -473,9 +562,10 @@ class TRPO(ActorCriticRLModel):
 						if not seg.get('continue_training', True):  # pytype: disable=attribute-error
 							break
 
-						add_vtarg_and_adv(seg, self.gamma, self.lam)
+						#add_vtarg_and_adv(seg, self.gamma, self.lam)
 						# ob, ac, atarg, ret, td1ret = map(np.concatenate, (obs, acs, atargs, rets, td1rets))
 						observation, action = seg["observations"], seg["actions"]
+
 						atarg, tdlamret = seg["adv"], seg["tdlamret"]
 
 						vpredbefore = seg["vpred"]  # predicted value function before update
@@ -650,11 +740,11 @@ if __name__ == '__main__':
 
 	import gym
 
-
-	env = gym.make('CartPole-v1')
+	from tst import Environment
+	env = Environment(lambda :(0.01,1000)) #gym.make('CartPole-v1')
 
 	model = TRPO(MlpPolicy, env, verbose=1)
-	model.learn(total_timesteps=25000)
+	model.learn(total_timesteps=2500000)
 
 	# model.save("trpo_cartpole")
 	#
