@@ -437,7 +437,7 @@ class TRPO(ActorCriticRLModel):
 								   old_policy.proba_distribution.logp(action))
 					surrgain = tf.reduce_mean(ratio * atarg)
 
-					optimgain = surrgain + entbonus
+					optimgain = surrgain# ddlau + entbonus
 					losses = [optimgain, meankl, entbonus, surrgain, meanent]
 					self.loss_names = ["optimgain", "meankl", "entloss", "surrgain", "entropy"]
 

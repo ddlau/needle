@@ -11,6 +11,9 @@ from stable_baselines.common.vec_env import VecEnv
 if typing.TYPE_CHECKING:
 	from stable_baselines.common.base_class import BaseRLModel  # pytype: disable=pyi-error
 
+from stable_baselines.common.policies import MlpPolicy
+
+
 import time
 from contextlib import contextmanager
 from collections import deque
@@ -385,15 +388,13 @@ class TRPO( ActorCriticRLModel ):
 		new_tb_log = self._init_num_timesteps( reset_num_timesteps )
 		callback = self._init_callback( callback )
 
-		with SetVerbosity( self.verbose ), TensorboardWriter( self.graph, self.tensorboard_log, tb_log_name, new_tb_log ) \
-				as writer:
+		with SetVerbosity( self.verbose ), TensorboardWriter( self.graph, self.tensorboard_log, tb_log_name, new_tb_log ) 				as writer:
 			self._setup_learn()
 
 			with self.sess.as_default():
 				callback.on_training_start( locals(), globals() )
 
-				seg_gen = traj_segment_generator( self.policy_pi, self.env, self.timesteps_per_batch,
-				                                  callback=callback )
+				seg_gen = traj_segment_generator( self.policy_pi, self.env, self.timesteps_per_batch,callback=callback )
 
 				episodes_so_far = 0
 				timesteps_so_far = 0
@@ -561,6 +562,23 @@ class TRPO( ActorCriticRLModel ):
 
 
 if __name__ == '__main__':
+
+	env = gym.make('CartPole-v1')
+
+	model = TRPO(MlpPolicy, env, verbose=1)
+	model.learn(total_timesteps=25000)
+	#model.save("trpo_cartpole")
+	#del model # remove to demonstrate saving and loading
+	#model = TRPO.load("trpo_cartpole")
+
+	obs = env.reset()
+	steps=0
+	while True:
+		action, _states = model.predict(obs)
+		steps += 1
+		obs, rewards, dones, info = env.step(action)
+		env.render()
+
 	exit()
 
 # 纯TRPO没GAIL
