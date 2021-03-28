@@ -437,7 +437,7 @@ class TRPO(ActorCriticRLModel):
 								   old_policy.proba_distribution.logp(action))
 					surrgain = tf.reduce_mean(ratio * atarg)
 
-					optimgain = surrgain# ddlau + entbonus
+					optimgain = surrgain + entbonus
 					losses = [optimgain, meankl, entbonus, surrgain, meanent]
 					self.loss_names = ["optimgain", "meankl", "entloss", "surrgain", "entropy"]
 
@@ -798,7 +798,7 @@ if __name__ == '__main__':
 	from tst import Environment
 	env = Environment(lambda :(0.01,1000)) #gym.make('CartPole-v1')
 
-	model = TRPO(MlpPolicy, env, verbose=1)
+	model = TRPO(MlpPolicy, env,policy_kwargs=[256, 256], verbose=1)
 	model.learn(total_timesteps=2500000)
 
 	# model.save("trpo_cartpole")
