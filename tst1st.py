@@ -251,6 +251,8 @@ def trajectories1st( environment, policy, horizon, gamma, lamda ):
 		advantages_at_all = list()
 		returns_at_all = list()
 
+		environment.idx = 0
+
 		while steps < horizon:
 			observations = list()
 			actions = list()
