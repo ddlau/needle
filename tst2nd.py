@@ -563,6 +563,29 @@ class TRPO( ActorCriticRLModel ):
 
 if __name__ == '__main__':
 
+	from stable_baselines.common.distributions import DiagGaussianProbabilityDistribution
+	np.random.seed(1)
+
+	ppp = np.arange(1,1024*10000+1,1).reshape(10000,1024).astype(np.float32) #np.random.rand(10000,1024).astype(np.float32)
+	prb = DiagGaussianProbabilityDistribution( ppp)
+	x = prb.sample()
+	b = prb.logp(x)
+
+	c =tf.reduce_mean(		prb.entropy())
+	d = tf.reduce_mean(-b)
+	e = tf.math.reduce_std(b)
+	with tf.Session() as session:
+		c = session.run(tf.reduce_mean(		prb.entropy()))
+		print( c)
+		d = session.run( d)
+		print( d)
+		print( c-d)
+		e= session.run(e)
+		print( e)
+
+	exit()
+
+
 	env = gym.make('CartPole-v1')
 
 	model = TRPO(MlpPolicy, env, verbose=1)
