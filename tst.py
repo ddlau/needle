@@ -87,7 +87,8 @@ class Environment( gym.Env ):
 
 	def perform( self, a ):
 		try:
-			a = np.clip(a,-1.0,+1.0)
+			assert np.all( -1.0 <= a <= +1.0)
+			#a = np.clip(a,-1.0,+1.0)
 			reward = 0
 
 			q = self.q * abs( a )

@@ -264,6 +264,7 @@ def trajectories1st( environment, policy, horizon, gamma, lamda ):
 
 				action, value, states, _ = policy.step( new[None,:] )
 				action = action[0]
+				action = np.clip( action, -1.0, +1.0)
 				value = value[0]
 				# print( 'action',action)
 				#action, value = policy.act( new )
@@ -805,7 +806,8 @@ if __name__ == '__main__':
 	# not OK model = TRPO(MlpPolicy, env, entcoeff=0.01, policy_kwargs={ 'net_arch':[64, 64] }, verbose=1)
 	# not OK model = TRPO(MlpPolicy, env,policy_kwargs={ 'net_arch': [ dict(pi=[64,64],vf=[64,64])] }, verbose=1,entcoeff=0.01)
 
-	model = TRPO(MlpPolicy, env, entcoeff=0.0, timesteps_per_batch=100, policy_kwargs={ 'net_arch':[64, 64] }, verbose=1)
+	# not OK model = TRPO(MlpPolicy, env, entcoeff=0.0, timesteps_per_batch=100, policy_kwargs={ 'net_arch': [64, 64] }, verbose=1)
+	model = TRPO( MlpPolicy, env, entcoeff=0.0, timesteps_per_batch=100, policy_kwargs={ 'net_arch': [ dict( pi=[64, 64 ], vf=[64,64] )] }, verbose=1 )
 	model.learn(total_timesteps=2500000)
 
 	# model.save("trpo_cartpole")
