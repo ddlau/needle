@@ -324,7 +324,7 @@ def trajectories1st( environment, policy, horizon, gamma, lamda ):
 class TRPO(ActorCriticRLModel):
 
 
-	def __init__(self, policy, env, gamma=0.99, timesteps_per_batch=1024, max_kl=0.01, cg_iters=10, lam=0.98,
+	def __init__(self, policy, env, gamma=0.99, timesteps_per_batch=700, max_kl=0.01, cg_iters=10, lam=0.98,
 				 entcoeff=0.0, cg_damping=1e-2, vf_stepsize=3e-4, vf_iters=3, verbose=0, tensorboard_log=None,
 				 _init_setup_model=True, policy_kwargs=None, full_tensorboard_log=False,
 				 seed=None, n_cpu_tf_sess=1):
@@ -800,7 +800,12 @@ if __name__ == '__main__':
 	from tst import Environment
 	env = Environment(lambda :(0.01,1000)) #gym.make('CartPole-v1')
 
-	model = TRPO(MlpPolicy, env,policy_kwargs=[256, 256], verbose=1)
+	# not OK model = TRPO(MlpPolicy, env,policy_kwargs={ 'net_arch':[64, 64] }, verbose=1)
+	# not OK model = TRPO(MlpPolicy, env,policy_kwargs={ 'net_arch': [ dict(pi=[64,64],vf=[64,64])] }, verbose=1)
+	# not OK model = TRPO(MlpPolicy, env, entcoeff=0.01, policy_kwargs={ 'net_arch':[64, 64] }, verbose=1)
+	# not OK model = TRPO(MlpPolicy, env,policy_kwargs={ 'net_arch': [ dict(pi=[64,64],vf=[64,64])] }, verbose=1,entcoeff=0.01)
+
+	model = TRPO(MlpPolicy, env, entcoeff=0.0, timesteps_per_batch=100, policy_kwargs={ 'net_arch':[64, 64] }, verbose=1)
 	model.learn(total_timesteps=2500000)
 
 	# model.save("trpo_cartpole")

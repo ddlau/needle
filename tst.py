@@ -59,6 +59,8 @@ class Environment( gym.Env ):
 		self.observation_space = gym.spaces.Box( float( '-inf' ), float( '+inf' ), x )
 		self.action_space = gym.spaces.Box( -1.0,+1.0, [ 1 ] )#gym.spaces.Box( float( '-inf' ), float( '+inf' ), [ 1 ] )
 
+		self.log = print
+
 	def assemble( self ):
 		return np.concatenate( (
 			self.new[ 'asks' ].flatten(),
@@ -85,9 +87,11 @@ class Environment( gym.Env ):
 
 	def perform( self, a ):
 		try:
+			a = np.clip(a,-1.0,+1.0)
 			reward = 0
 
 			q = self.q * abs( a )
+			#print( q, self.q )
 			if a > 0 and q > self.old[ 'p' ] * self.unit:
 				d = q
 				b = 0
@@ -104,6 +108,10 @@ class Environment( gym.Env ):
 				self.b += b
 				reward += self.new[ 'p' ] * self.b
 
+				self.log( f'P: {self.old["p"]:>16.3f}=>{self.new["p"]:<16.3f}B: {q:>16.3f}=>{b:<16.3f}state={self.b:>16.8f}/{self.q:<16.8f}R={reward:<8.3f}' )
+
+				assert self.b > - 1e-7, f'b={self.b:>16.8f}, q={self.q:>16.8f}'
+				assert self.q > - 1e-7, f'b={self.b:>16.8f}, q={self.q:>16.8f}'
 				return reward
 
 			b = self.b * abs( a )
@@ -123,16 +131,24 @@ class Environment( gym.Env ):
 				self.b -= b
 				reward += self.new[ 'p' ] * self.b
 
+				self.log( f'P: {self.old["p"]:>16.3f}=>{self.new["p"]:<16.3f}S: {b:>16.3f}=>{q:<16.3f}state={self.b:>16.8f}/{self.q:<16.8f}R={reward:<8.3f}' )
+				assert self.b > - 1e-7, f'b={self.b:>16.8f}, q={self.q:>16.8f}'
+				assert self.q > - 1e-7, f'b={self.b:>16.8f}, q={self.q:>16.8f}'
 				return reward
 
 			reward += self.b * (self.new[ 'p' ] - self.old[ 'p' ])
 
+			assert self.b > - 1e-7, f'b={self.b:>16.8f}, q={self.q:>16.8f}'
+			assert self.q > - 1e-7, f'b={self.b:>16.8f}, q={self.q:>16.8f}'
 			return reward
 
 		finally:
 			#print( f'{self.old["p"]}=>{self.new["p"]}: {reward}')
 
-			self.done = self.b < self.unit and self.q / self.new[ 'p' ] < self.unit
+			self.done = ( self.b + self.q / self.new[ 'p' ] ) < self.unit * 10
+			#print( '@'*128, ( self.b + self.q / self.new[ 'p' ] ), self.b, self.q)
+			if self.done:
+				print( '@'*128, ( self.b + self.q / self.new[ 'p' ] ), self.b, self.q)
 
 	def reset( self ):
 		#print( 'reset')
