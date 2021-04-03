@@ -260,6 +260,8 @@ def trajectories1st( environment, policy, horizon, gamma, lamda ):
 			rewards = list()
 
 			new = environment.reset()
+			new = np.concatenate( (new[0].flatten(), new[2], new[1].flatten() ) )
+
 			while True:
 
 				action, value, states, _ = policy.step( new[None,:] )
@@ -269,7 +271,14 @@ def trajectories1st( environment, policy, horizon, gamma, lamda ):
 				# print( 'action',action)
 				#action, value = policy.act( new )
 				old, new, reward, stop, done, info = new, *environment.step( action )
+				if not stop and not done:
+					new = np.concatenate( (new[0].flatten(), new[2], new[1].flatten() ) )
 				#print( f'stop={stop}, done={done}')
+
+				if stop:
+					print( 'stop', '-'*32)
+				if done:
+					print( 'done', '-'*32)
 
 				if stop and not observations:
 					break
@@ -288,6 +297,8 @@ def trajectories1st( environment, policy, horizon, gamma, lamda ):
 				v = np.concatenate( (values, [ value ]) )
 				m = np.concatenate( (np.ones( len( values ) - 1 ), [ 0 if done else 1 ]) )
 
+				#xxx = np.asarray( rewards )
+				#yyy = gamma * m * v[+1:]
 				deltas = np.asarray( rewards ) + gamma * m * v[ +1: ] - v[ :-1 ]
 				advantages = discount( deltas, gamma * lamda )
 				returns = advantages + np.asarray(values)
@@ -799,7 +810,7 @@ if __name__ == '__main__':
 	import gym
 
 	from tst import Environment
-	env = Environment(lambda :(0.01,1000)) #gym.make('CartPole-v1')
+	env = Environment(lambda :(0.01,1000), lambda x:0, 1, 1, 0.0001, 0.002,0.002,0.002,0.002,check=None) #gym.make('CartPole-v1')
 
 	# not OK model = TRPO(MlpPolicy, env,policy_kwargs={ 'net_arch':[64, 64] }, verbose=1)
 	# not OK model = TRPO(MlpPolicy, env,policy_kwargs={ 'net_arch': [ dict(pi=[64,64],vf=[64,64])] }, verbose=1)
@@ -807,7 +818,7 @@ if __name__ == '__main__':
 	# not OK model = TRPO(MlpPolicy, env,policy_kwargs={ 'net_arch': [ dict(pi=[64,64],vf=[64,64])] }, verbose=1,entcoeff=0.01)
 
 	# not OK model = TRPO(MlpPolicy, env, entcoeff=0.0, timesteps_per_batch=100, policy_kwargs={ 'net_arch': [64, 64] }, verbose=1)
-	model = TRPO( MlpPolicy, env, entcoeff=0.0, timesteps_per_batch=100, policy_kwargs={ 'net_arch': [ dict( pi=[64, 64 ], vf=[64,64] )] }, verbose=1 )
+	model = TRPO( MlpPolicy, env, entcoeff=0.0, timesteps_per_batch=100, policy_kwargs={ 'net_arch': [ dict( pi=[256, 256 ], vf=[256,256] )] }, verbose=1 )
 	model.learn(total_timesteps=2500000)
 
 	# model.save("trpo_cartpole")
